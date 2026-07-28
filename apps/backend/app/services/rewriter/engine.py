@@ -11,6 +11,7 @@ from app.services.rewriter.lexicon import LexiconProcessor
 from app.services.rewriter.scorer import AdversarialScorer
 from app.services.rewriter.nli_scorer import NLIConsistencyScorer
 from app.services.rewriter.cache import embedding_cache
+from app.services.rewriter.governor import APIGovernor, FALLBACK_MODELS
 
 # Ensure Gemini is configured
 if settings.GEMINI_API_KEY:
@@ -21,87 +22,70 @@ class RewriterEngine:
     def __init__(self):
         self.scorer = AdversarialScorer()
         self.nli_scorer = NLIConsistencyScorer()
-        self.models = [
-            "gemini-2.5-flash",
-            "gemini-1.5-flash",
-            "gemini-2.5-pro",
-            "gemini-1.5-pro"
-        ]
+        self.models = FALLBACK_MODELS
 
     def _call_gemini_json_sync(self, system_prompt: str, user_prompt: str, temperature: float = 0.7) -> str:
-        """Call Gemini requesting JSON response format with rate-limiting retries."""
+        """Call Gemini requesting JSON response format with rate-limiting pacing and instant prioritized fallbacks."""
         if not settings.GEMINI_API_KEY:
             return "[]"
         
         last_error = None
         for model_name in self.models:
-            for attempt in range(1, 4):
-                try:
-                    model = genai.GenerativeModel(
-                        model_name=model_name,
-                        system_instruction=system_prompt
-                    )
-                    response = model.generate_content(
-                        user_prompt,
-                        generation_config={
-                            "response_mime_type": "application/json",
-                            "temperature": temperature
-                        }
-                    )
-                    return response.text.strip()
-                except Exception as e:
-                    err_msg = str(e)
-                    print(f"Error calling Gemini JSON with model {model_name} (attempt {attempt}/3): {err_msg}")
-                    last_error = e
-                    
-                    if "404" in err_msg or "not found" in err_msg.lower() or "not supported" in err_msg.lower():
-                        break  # Skip this model
-                        
-                    if "429" in err_msg or "quota" in err_msg.lower():
-                        sleep_time = 10 + (attempt * 5)
-                        print(f"Rate limit hit. Sleeping {sleep_time}s before retry...")
-                        time.sleep(sleep_time)
-                    else:
-                        time.sleep(2)
+            try:
+                # Pace request to avoid hitting 15 RPM rate limits
+                APIGovernor.pace()
+                
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_prompt
+                )
+                response = model.generate_content(
+                    user_prompt,
+                    generation_config={
+                        "response_mime_type": "application/json",
+                        "temperature": temperature
+                    }
+                )
+                return response.text.strip()
+            except Exception as e:
+                err_msg = str(e)
+                print(f"Error calling Gemini JSON with model {model_name}: {err_msg}")
+                last_error = e
+                # Fallback to the next model instantly
+                continue
                         
         raise Exception(f"All Gemini models failed in JSON mode. Last error: {str(last_error)}")
 
     def _call_gemini_text_sync(self, system_prompt: str, user_prompt: str, temperature: float = 1.0) -> str:
-        """Call Gemini requesting raw text response with rate-limiting retries."""
+        """Call Gemini requesting raw text response with rate-limiting pacing and instant prioritized fallbacks."""
         if not settings.GEMINI_API_KEY:
             return f"[Dev Mock Rewritten Text] Original: {user_prompt[:50]}"
         
         last_error = None
         for model_name in self.models:
-            for attempt in range(1, 4):
-                try:
-                    model = genai.GenerativeModel(
-                        model_name=model_name,
-                        system_instruction=system_prompt
-                    )
-                    response = model.generate_content(
-                        user_prompt,
-                        generation_config={
-                            "temperature": temperature,
-                            "top_p": 0.95,
-                            "top_k": 40
-                        }
-                    )
-                    return response.text.strip()
-                except Exception as e:
-                    err_msg = str(e)
-                    print(f"Error calling Gemini Text with model {model_name} (attempt {attempt}/3): {err_msg}")
-                    last_error = e
-                    
-                    if "404" in err_msg or "not found" in err_msg.lower() or "not supported" in err_msg.lower():
-                        break  # Skip this model
-                        
-                    if "429" in err_msg or "quota" in err_msg.lower():
-                        sleep_time = 10 + (attempt * 5)
-                        print(f"Rate limit hit. Sleeping {sleep_time}s before retry...")
-                        time.sleep(sleep_time)
-                    else:
-                        time.sleep(2)
+            try:
+                # Pace request to avoid hitting 15 RPM rate limits
+                APIGovernor.pace()
+                
+                model = genai.GenerativeModel(
+                    model_name=model_name,
+                    system_instruction=system_prompt
+                )
+                response = model.generate_content(
+                    user_prompt,
+                    generation_config={
+                        "temperature": temperature,
+                        "top_p": 0.95,
+                        "top_k": 40
+                    }
+                )
+                return response.text.strip()
+            except Exception as e:
+                err_msg = str(e)
+                print(f"Error calling Gemini Text with model {model_name}: {err_msg}")
+                last_error = e
+                # Fallback to the next model instantly
+                continue
                         
         raise Exception(f"All Gemini models failed in text mode. Last error: {str(last_error)}")
 

@@ -36,28 +36,32 @@ class AdversarialScorer:
         self._initialize_onnx()
 
     def _initialize_onnx(self):
-        """Try loading ONNX Runtime and the RoBERTa tokenizer."""
+        """Try loading ONNX Runtime and the RoBERTa tokenizer from local cache."""
         try:
             import onnxruntime as ort
             from transformers import AutoTokenizer
             from huggingface_hub import hf_hub_download
             import os
             
-            print("ONNXScorer: Resolving local detector model from Hugging Face...")
-            self.model_path = hf_hub_download(
-                repo_id="nicoamoretti/roberta-openai-detector-onnx",
-                filename="onnx/model.onnx",
-                local_files_only=False
-            )
+            print("ONNXScorer: Resolving local detector model from cache...")
+            try:
+                self.model_path = hf_hub_download(
+                    repo_id="nicoamoretti/roberta-openai-detector-onnx",
+                    filename="onnx/model.onnx",
+                    local_files_only=True
+                )
+            except Exception:
+                self.model_path = ""
             
             if self.model_path and os.path.exists(self.model_path):
                 print(f"ONNXScorer: Loading ONNX session from {self.model_path}...")
                 self.ort_session = ort.InferenceSession(self.model_path, providers=["CPUExecutionProvider"])
-                self.tokenizer = AutoTokenizer.from_pretrained("nicoamoretti/roberta-openai-detector-onnx", local_files_only=False)
+                self.tokenizer = AutoTokenizer.from_pretrained("nicoamoretti/roberta-openai-detector-onnx", local_files_only=True)
                 self.onnx_available = True
                 print("ONNXScorer: Successfully initialized local RoBERTa classifier.")
             else:
-                print("ONNXScorer: Model file not found in cache. Falling back to API/heuristics.")
+                print("ONNXScorer: Model file not found in local cache. Falling back to API/heuristics.")
+                self.onnx_available = False
         except Exception as e:
             print(f"ONNXScorer Warning: Failed to initialize ONNX classifier: {str(e)}. Using fallback paths.")
             self.onnx_available = False
@@ -160,23 +164,40 @@ class AdversarialScorer:
             
         # Run model inference
         outputs = self.ort_session.run(None, onnx_inputs)
-        logits = outputs[0]
-        
-        # Softmax to get probabilities (Class 0: Human, Class 1: AI)
-        probs = self._softmax(logits)
-        return float(probs[0][1])
+    async def score_text(self, text: str, use_api: bool = False) -> float:
+        """Score text using the local ONNX model or Gemini API as fallback."""
+        if not text.strip():
+            return 0.0
 
-    async def score_text(self, text: str, use_api: bool = True) -> float:
-        """Score the text's AI-generated probability.
-        Tries local ONNX RoBERTa model first.
-        Falls back to Gemini API scorer, then to local heuristics.
-        """
         # 1. Try local ONNX model
-        if self.onnx_available:
+        if self.onnx_available and self.tokenizer and self.ort_session:
             try:
-                score = self._score_onnx(text)
-                print(f"ONNXScorer: Executed offline RoBERTa AI detection. Score: {score:.4f}")
-                return score
+                # Tokenize inputs
+                inputs = self.tokenizer(
+                    text,
+                    truncation=True,
+                    max_length=512,
+                    return_tensors="np"
+                )
+                
+                # Format for ONNX
+                session_input_names = [i.name for i in self.ort_session.get_inputs()]
+                ort_inputs = {}
+                for name in session_input_names:
+                    if name in inputs:
+                        ort_inputs[name] = inputs[name].astype(np.int64)
+                
+                # Execute ONNX forward pass
+                ort_outs = self.ort_session.run(None, ort_inputs)
+                logits = ort_outs[0][0] # shape: (2,) - index 0 is Fake/AI, index 1 is Real/Human
+                
+                # Apply softmax to get probabilities
+                exp_logits = np.exp(logits - np.max(logits))
+                probs = exp_logits / np.sum(exp_logits)
+                
+                # AI likelihood score is probability of Class 0 (Fake)
+                ai_score = float(probs[0])
+                return ai_score
             except Exception as e:
                 print(f"ONNXScorer Error: Offline inference failed ({str(e)}). Trying fallback.")
 
@@ -193,10 +214,13 @@ class AdversarialScorer:
                     "Do not include any extra markdown formatting or preambles."
                 )
                 
-                response = None
+                response_text = None
                 last_err = None
-                for model_name in ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"]:
+                for model_name in FALLBACK_MODELS:
                     try:
+                        # Pace request rate to avoid rate limits
+                        APIGovernor.pace()
+                        
                         model = genai.GenerativeModel(
                             model_name=model_name,
                             system_instruction=system_prompt
@@ -205,18 +229,18 @@ class AdversarialScorer:
                             f"Analyze this text:\n\n{text}",
                             generation_config={"response_mime_type": "application/json"}
                         )
+                        response_text = response.text.strip()
                         break
                     except Exception as model_err:
+                        print(f"ONNXScorer API error with model {model_name}: {str(model_err)}")
                         last_err = model_err
-                        if "404" in str(model_err) or "not found" in str(model_err).lower() or "not supported" in str(model_err).lower():
-                            continue
-                        raise model_err
+                        continue
                 
-                if response is None:
+                if response_text is None:
                     raise last_err
                 
                 import json
-                result = json.loads(response.text.strip())
+                result = json.loads(response_text)
                 score = float(result.get("ai_probability", 0.5))
                 return min(max(score, 0.0), 1.0)
             except Exception as e:

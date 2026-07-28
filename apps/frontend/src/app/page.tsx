@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import TextSuite from "@/components/TextSuite";
 import YouTubeSuite from "@/components/YouTubeSuite";
 import MediaSuite from "@/components/MediaSuite";
@@ -89,6 +90,16 @@ export default function DashboardHome() {
               </svg>
               Media Suite
             </button>
+
+            <Link
+              href="/dashboard/blog-architect"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-900/40 transition-all cursor-pointer"
+            >
+              <svg className="w-5 h-5 text-indigo-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+              </svg>
+              Blog Architect
+            </Link>
           </nav>
         </div>
 
@@ -127,7 +138,7 @@ export default function DashboardHome() {
             </div>
 
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <div className="glass-card rounded-xl p-6 space-y-4">
                 <div className="flex justify-between items-start">
                   <div className="w-10 h-10 bg-indigo-500/10 rounded-lg flex items-center justify-center border border-indigo-500/20">
@@ -170,6 +181,21 @@ export default function DashboardHome() {
                 <div className="space-y-1">
                   <h3 className="text-base font-semibold text-slate-200">Media Enhancer</h3>
                   <p className="text-slate-400 text-xs">Run local deep learning models for upscaling assets or extracting transparent background objects.</p>
+                </div>
+              </div>
+
+              <div className="glass-card rounded-xl p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div className="w-10 h-10 bg-indigo-500/10 rounded-lg flex items-center justify-center border border-indigo-500/20 animate-pulse">
+                    <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
+                    </svg>
+                  </div>
+                  <Link href="/dashboard/blog-architect" className="text-xs text-indigo-400 font-semibold hover:text-indigo-300 transition-all cursor-pointer">Open Suite →</Link>
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-semibold text-slate-200">Blog Architect</h3>
+                  <p className="text-slate-400 text-xs">Generate highly factual blog articles and humanize them chunk-by-chunk for Medium, Reddit, etc.</p>
                 </div>
               </div>
             </div>

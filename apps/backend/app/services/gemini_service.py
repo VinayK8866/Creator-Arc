@@ -12,9 +12,7 @@ class GeminiService:
         # Multimodal and generative models ranked in order of preference
         self.FALLBACK_MODELS = [
             "gemini-2.5-flash",
-            "gemini-1.5-flash",
-            "gemini-2.5-pro",
-            "gemini-1.5-pro"
+            "gemini-2.5-pro"
         ]
 
     def _call_gemini_sync(self, system_prompt: str, user_prompt: str, generation_config: dict = None) -> str:

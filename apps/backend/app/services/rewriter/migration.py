@@ -347,12 +347,218 @@ SEED_DATA = [
             "tone": "formal",
             "word_count": 44
         }
+    },
+    # Platform-specific style exemplars for en-IN
+    {
+        "domain": "medium",
+        "dialect": "en-IN",
+        "content": (
+            "The startup ecosystem in Bangalore is moving at a breakneck speed. PFA my notes on why so many founders fail in their first year. "
+            "The reality is simple: they focus too much on fundraising and not enough on product-market fit. Kindly do the needful and talk to "
+            "your customers before writing a single line of code. We prepone our product launches only to realize the market isn't ready. "
+            "Focus on the core value first, and scaling will follow."
+        ),
+        "payload": {
+            "text": "Bangalore startup ecosystem notes on why founders fail.",
+            "domain": "medium",
+            "tone": "engaging",
+            "word_count": 68
+        }
+    },
+    {
+        "domain": "substack",
+        "dialect": "en-IN",
+        "content": (
+            "When analyzing the macroeconomic landscape of India's digital public infrastructure, one cannot ignore the role of UPI. "
+            "It's not just a payment protocol; it's a financial revolution. Many analysts discuss about the scale, but they miss the grassroots impact. "
+            "PFA the growth charts. If you're building fintech in India, kindly note that offline merchants are your real partners. "
+            "We need to prepone financial inclusion to unlock the next phase of GDP growth."
+        ),
+        "payload": {
+            "text": "UPI role in India's digital public infrastructure analysis.",
+            "domain": "substack",
+            "tone": "professional",
+            "word_count": 67
+        }
+    },
+    {
+        "domain": "reddit",
+        "dialect": "en-IN",
+        "content": (
+            "Look, here is the honest truth about working in IT services vs a startup in India. I spent 4 years in a service MNC and it was soul-crushing. "
+            "Every single email was 'Kindly do the needful' or 'PFA the sheet'. We preponed reviews for no reason. In a startup, you actually build. "
+            "You code, deploy, and fix. Yes, it's chaotic, but the growth is insane. Do one thing: if you are young, leave the MNC and join a product firm. "
+            "You won't regret it."
+        ),
+        "payload": {
+            "text": "Honest comparison between MNC services and startups in India.",
+            "domain": "reddit",
+            "tone": "casual",
+            "word_count": 76
+        }
+    },
+    {
+        "domain": "quora",
+        "dialect": "en-IN",
+        "content": (
+            "How do I crack product management roles in India? Here is my step-by-step answer:\n"
+            "1. Understand user needs: Do not just memorize frameworks.\n"
+            "2. Build side projects: Show, don't tell.\n"
+            "3. Network: PFA the list of top PM communities in India.\n"
+            "Kindly do the needful and reach out to mentors. We often discuss about standard templates, but real-world case studies are what get you hired. "
+            "Prepone your prep work now."
+        ),
+        "payload": {
+            "text": "How to crack product management roles in India.",
+            "domain": "quora",
+            "tone": "authoritative",
+            "word_count": 72
+        }
+    },
+    {
+        "domain": "wordpress",
+        "dialect": "en-IN",
+        "content": (
+            "Scaling a digital marketing agency in Mumbai requires a deep understanding of local consumer behavior. "
+            "We have analyzed the top campaigns from last year and found that video content outperforms text by 3x. Kindly check the attached case study for details. "
+            "If you want to grow your business, do one thing: invest in hyper-localized content. Let's prepone our strategy call to discuss the execution plan."
+        ),
+        "payload": {
+            "text": "Scaling digital marketing agencies in Mumbai using video content.",
+            "domain": "wordpress",
+            "tone": "professional",
+            "word_count": 59
+        }
+    },
+    {
+        "domain": "squarespace",
+        "dialect": "en-IN",
+        "content": (
+            "Designing a modern e-commerce site for the Indian market is all about building trust. With UPI and cod payment options, checkout must be seamless. "
+            "PFA our design template that improved conversions by 24%. Kindly review and revert with your feedback. We can prepone the client review if you have "
+            "the inputs ready. Let's discuss about the mobile layout today."
+        ),
+        "payload": {
+            "text": "Designing trust-based e-commerce websites for Indian consumers.",
+            "domain": "squarespace",
+            "tone": "elegant",
+            "word_count": 56
+        }
+    },
+    {
+        "domain": "wix",
+        "dialect": "en-IN",
+        "content": (
+            "If you are planning to start a food business in Delhi, building a beautiful website is your first step. It showcases your menu and lets customers order directly. "
+            "Do one thing first: get high-quality photos of your dishes. PFA our guide on food photography. Kindly check and revert back. "
+            "We need to prepone our launch marketing to create buzz."
+        ),
+        "payload": {
+            "text": "Starting a Delhi food business and website creation tips.",
+            "domain": "wix",
+            "tone": "friendly",
+            "word_count": 55
+        }
     }
 ]
+
+from app.models.platform_metadata import PlatformMetadata
+
+PLATFORM_SEEDS = [
+    {
+        "platform": "medium",
+        "display_name": "Medium",
+        "storytelling_cadence": "Deep storytelling cadence, highly polished professional prose, engaging narrative arcs.",
+        "heading_style": "Balanced H2 and H3 subheadings with clear structural transitions.",
+        "layout_constraints": {"format": "markdown", "elements": ["blockquotes", "bold-intro", "h2", "h3"], "cadence": "narrative"},
+        "seo_optimizations": {"keywords_density": 0.015, "title_len": 60}
+    },
+    {
+        "platform": "substack",
+        "display_name": "Substack",
+        "storytelling_cadence": "Deep analytical and narrative prose, editorial perspective, first-person elements.",
+        "heading_style": "Clean H2 subheadings with italicized emphasis or callout blocks.",
+        "layout_constraints": {"format": "markdown", "elements": ["blockquotes", "bulletpoints", "bold-intro", "h2"], "cadence": "analytical"},
+        "seo_optimizations": {"keywords_density": 0.012, "title_len": 55}
+    },
+    {
+        "platform": "reddit",
+        "display_name": "Reddit",
+        "storytelling_cadence": "High structural burstiness, conversational first-person narrative, direct and engaging tone.",
+        "heading_style": "Bold inline headings with horizontal dividers (---).",
+        "layout_constraints": {"format": "markdown", "elements": ["horizontal-dividers", "linebreaks", "bold-inline"], "cadence": "first-person"},
+        "seo_optimizations": {"keywords_density": 0.005, "title_len": 120}
+    },
+    {
+        "platform": "quora",
+        "display_name": "Quora",
+        "storytelling_cadence": "Direct question-to-answer authoritative framework, expert insight, narrative elements.",
+        "heading_style": "Inline bolding for critical answers, structured step lists, or QA pairings.",
+        "layout_constraints": {"format": "markdown", "elements": ["inline-bolding", "numbered-lists", "qa-pair"], "cadence": "authoritative"},
+        "seo_optimizations": {"keywords_density": 0.01, "title_len": 80}
+    },
+    {
+        "platform": "wordpress",
+        "display_name": "WordPress",
+        "storytelling_cadence": "Formal corporate or lifestyle-blog layouts, highly readable block structures, introductory summaries.",
+        "heading_style": "SEO-optimized multi-layered headings (H1, H2, H3, H4).",
+        "layout_constraints": {"format": "html-blocks", "elements": ["headings", "bulletpoints", "bold-keywords"], "cadence": "structured"},
+        "seo_optimizations": {"keywords_density": 0.02, "title_len": 60, "meta_desc": True}
+    },
+    {
+        "platform": "squarespace",
+        "display_name": "Squarespace",
+        "storytelling_cadence": "Modern, design-centric layout cadence, elegant and concise paragraphs.",
+        "heading_style": "SEO-optimized multi-layered headings.",
+        "layout_constraints": {"format": "markdown", "elements": ["headings", "callouts", "clean-spacing"], "cadence": "elegant"},
+        "seo_optimizations": {"keywords_density": 0.015, "title_len": 60}
+    },
+    {
+        "platform": "wix",
+        "display_name": "Wix",
+        "storytelling_cadence": "Lifestyle-blog layout, visual storytelling accents, highly approachable phrasing.",
+        "heading_style": "SEO-optimized multi-layered headings.",
+        "layout_constraints": {"format": "markdown", "elements": ["headings", "bulletpoints", "visual-notes"], "cadence": "friendly"},
+        "seo_optimizations": {"keywords_density": 0.018, "title_len": 60}
+    }
+]
+
+def seed_platform_metadata(db: Session, force_reseed: bool = False):
+    """Seed the platform metadata constraints table."""
+    if force_reseed:
+        db.execute(text("DROP TABLE IF EXISTS platform_metadata CASCADE;"))
+        db.commit()
+        Base.metadata.create_all(db.bind, tables=[PlatformMetadata.__table__])
+        print("Platform metadata table recreated.")
+
+    count = db.query(PlatformMetadata).count()
+    if count > 0 and not force_reseed:
+        print(f"Platform metadata already has {count} entries. Skipping.")
+        return
+
+    print(f"Seeding {len(PLATFORM_SEEDS)} platform metadata profiles...")
+    for entry in PLATFORM_SEEDS:
+        meta = PlatformMetadata(
+            platform=entry["platform"],
+            display_name=entry["display_name"],
+            storytelling_cadence=entry["storytelling_cadence"],
+            heading_style=entry["heading_style"],
+            layout_constraints=entry["layout_constraints"],
+            seo_optimizations=entry["seo_optimizations"]
+        )
+        db.add(meta)
+    db.commit()
+    print("Platform metadata seeded successfully.")
 
 
 def seed_style_references(db: Session, force_reseed: bool = False):
     """Seed the style references table if empty or if force_reseed is True."""
+    # Seed platform metadata alongside style references
+    try:
+        seed_platform_metadata(db, force_reseed=force_reseed)
+    except Exception as pe:
+        print(f"Platform seeding error: {str(pe)}")
+
     # Check if table exists or needs schema refresh
     if force_reseed:
         print("Dropping and recreating style_references table to apply new domain/payload schema...")
@@ -396,6 +602,6 @@ def seed_style_references(db: Session, force_reseed: bool = False):
         )
         db.add(style_ref)
         db.commit()
-        time.sleep(2.2)  # Delay between requests to stay safe under 15 RPM
+        time.sleep(1.0)  # Delay between requests to stay safe under 15 RPM
     
     print("Style references seeded successfully.")

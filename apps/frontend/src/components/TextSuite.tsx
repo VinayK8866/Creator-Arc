@@ -87,6 +87,7 @@ export default function TextSuite() {
 
         const decoder = new TextDecoder();
         let buffer = "";
+        let currentEventName = "message";
 
         // Reset output targets
         setRewriteResult(null);
@@ -100,8 +101,6 @@ export default function TextSuite() {
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
           buffer = lines.pop() || "";
-
-          let currentEventName = "message";
 
           for (const line of lines) {
             const trimmed = line.trim();

@@ -22,27 +22,31 @@ class NLIConsistencyScorer:
         self._initialize_onnx()
 
     def _initialize_onnx(self):
-        """Load ONNX Runtime session and tokenizer for DeBERTa NLI."""
+        """Load ONNX Runtime session and tokenizer for DeBERTa NLI from local cache."""
         try:
             import onnxruntime as ort
             from transformers import AutoTokenizer
             from huggingface_hub import hf_hub_download
             
-            print("NLIScorer: Resolving local NLI model from Hugging Face...")
-            self.model_path = hf_hub_download(
-                repo_id="Xenova/nli-deberta-v3-base",
-                filename="onnx/model.onnx",
-                local_files_only=False
-            )
+            print("NLIScorer: Resolving local NLI model from cache...")
+            try:
+                self.model_path = hf_hub_download(
+                    repo_id="Xenova/nli-deberta-v3-base",
+                    filename="onnx/model.onnx",
+                    local_files_only=True
+                )
+            except Exception:
+                self.model_path = ""
             
             if self.model_path and os.path.exists(self.model_path):
                 print(f"NLIScorer: Loading ONNX session from {self.model_path}...")
                 self.ort_session = ort.InferenceSession(self.model_path, providers=["CPUExecutionProvider"])
-                self.tokenizer = AutoTokenizer.from_pretrained("Xenova/nli-deberta-v3-base", local_files_only=False)
+                self.tokenizer = AutoTokenizer.from_pretrained("Xenova/nli-deberta-v3-base", local_files_only=True)
                 self.onnx_available = True
                 print("NLIScorer: Successfully initialized local DeBERTa NLI classifier.")
             else:
-                print("NLIScorer: NLI model file not found in cache. Falling back to API.")
+                print("NLIScorer: NLI model file not found in local cache. Falling back to API.")
+                self.onnx_available = False
         except Exception as e:
             print(f"NLIScorer Warning: Failed to initialize ONNX NLI classifier: {str(e)}. Using API fallback.")
             self.onnx_available = False
@@ -124,24 +128,48 @@ class NLIConsistencyScorer:
         scores = []
         
         # 1. Try local ONNX model
-        if self.onnx_available:
+
+        normalized_hypothesis = hypothesis.strip()
+        if not normalized_hypothesis:
+            return 0.0
+
+        # 1. Try local ONNX model first
+        if self.onnx_available and self.tokenizer and self.ort_session:
             try:
+                scores = []
                 for fact in facts:
-                    # Direction A: Hypothesis entails Fact (standard check if hyp is more specific)
-                    score_a = self._score_local_onnx(normalized_hypothesis, fact)
-                    # Direction B: Fact entails Hypothesis (standard check if hyp is weaker/modal)
-                    score_b = self._score_local_onnx(fact, normalized_hypothesis)
+                    # Construct NLI input format: [CLS] Fact [SEP] Hypothesis [SEP]
+                    inputs = self.tokenizer(
+                        fact,
+                        normalized_hypothesis,
+                        truncation=True,
+                        max_length=256,
+                        return_tensors="np"
+                    )
                     
-                    # Take the maximum entailment score of the two directions
-                    fact_score = max(score_a, score_b)
-                    scores.append(fact_score)
+                    # Run inference via ONNX session
+                    session_input_names = [i.name for i in self.ort_session.get_inputs()]
+                    ort_inputs = {}
+                    for name in session_input_names:
+                        if name in inputs:
+                            ort_inputs[name] = inputs[name].astype(np.int64)
+                        
+                    ort_outs = self.ort_session.run(None, ort_inputs)
+                    logits = ort_outs[0][0] # shape: (num_classes,)
                     
+                    # Softmax to get probabilities (DeBERTa NLI classes: 0 = contradiction, 1 = neutral, 2 = entailment)
+                    exp_logits = np.exp(logits - np.max(logits))
+                    probs = exp_logits / np.sum(exp_logits)
+                    
+                    # Entailment score (class 2)
+                    entail_score = float(probs[2])
+                    scores.append(entail_score)
+                
                 min_score = min(scores) if scores else 1.0
                 print(f"NLIScorer: Offline NLI checks. Fact scores: {[f'{s:.4f}' for s in scores]}. Min Alignment: {min_score:.4f}")
                 return min_score
             except Exception as e:
-                print(f"NLIScorer Error: Local NLI inference failed ({str(e)}). Trying API fallback.")
-                scores = []
+                print(f"NLIScorer Error: Offline inference failed ({str(e)}). Trying fallback.")
 
         # 2. Try Gemini API fallback
         if use_api and settings.GEMINI_API_KEY:
@@ -157,10 +185,13 @@ class NLIConsistencyScorer:
                     "Do not include any extra markdown formatting or preambles."
                 )
                 
-                response = None
+                response_text = None
                 last_err = None
-                for model_name in ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"]:
+                for model_name in FALLBACK_MODELS:
                     try:
+                        # Pace request rate to avoid rate limits
+                        APIGovernor.pace()
+                        
                         model = genai.GenerativeModel(
                             model_name=model_name,
                             system_instruction=system_prompt
@@ -175,18 +206,18 @@ class NLIConsistencyScorer:
                             user_prompt,
                             generation_config={"response_mime_type": "application/json"}
                         )
+                        response_text = response.text.strip()
                         break
                     except Exception as model_err:
+                        print(f"NLIScorer API error with model {model_name}: {str(model_err)}")
                         last_err = model_err
-                        if "404" in str(model_err) or "not found" in str(model_err).lower() or "not supported" in str(model_err).lower():
-                            continue
-                        raise model_err
+                        continue
                 
-                if response is None:
+                if response_text is None:
                     raise last_err
                 
                 import json
-                result = json.loads(response.text.strip())
+                result = json.loads(response_text)
                 score = float(result.get("entailment_probability", 0.5))
                 print(f"NLIScorer: Executed Gemini API NLI check. Factual Alignment: {score:.4f}")
                 return min(max(score, 0.0), 1.0)

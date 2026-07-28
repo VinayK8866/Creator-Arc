@@ -13,6 +13,8 @@ from app.api.api import api_router
 from app.models.job import Job
 from app.models.style_reference import StyleReference
 from app.models.rewrite_pair import RewritePair
+from app.models.platform_metadata import PlatformMetadata
+from app.models.blog_post import BlogPost
 
 # Create database tables (SQLite/PostgreSQL fallback)
 Base.metadata.create_all(bind=engine)
